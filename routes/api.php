@@ -44,4 +44,12 @@ Route::prefix(config('satellite.satellite.api_prefix', 'api/satellite'))
         // Information endpoint
         Route::get('/info', [SatelliteApiController::class, 'info'])
             ->name('satellite.info');
+        
+        // Tenants endpoint - toutes les informations sur les tenants
+        Route::get('/tenants', [SatelliteApiController::class, 'tenants'])
+            ->name('satellite.tenants');
+        
+        // Performance metrics endpoint - métriques de performance détaillées
+        Route::get('/performance', [SatelliteApiController::class, 'performance'])
+            ->name('satellite.performance');
     }); 

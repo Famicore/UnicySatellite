@@ -262,6 +262,54 @@ class SatelliteApiController extends Controller
     }
 
     /**
+     * Tenants endpoint - toutes les informations sur les tenants
+     */
+    public function tenants(): JsonResponse
+    {
+        try {
+            $tenants = $this->collectTenantsData();
+            
+            return response()->json([
+                'success' => true,
+                'total_tenants' => $tenants['count'],
+                'tenants' => $tenants['data'],
+                'stats' => $tenants['stats'],
+                'timestamp' => now()->toISOString()
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'timestamp' => now()->toISOString()
+            ], 500);
+        }
+    }
+
+    /**
+     * Performance metrics endpoint
+     */
+    public function performance(): JsonResponse
+    {
+        try {
+            $performance = $this->collectPerformanceMetrics();
+            
+            return response()->json([
+                'success' => true,
+                'performance' => $performance,
+                'timestamp' => now()->toISOString()
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'timestamp' => now()->toISOString()
+            ], 500);
+        }
+    }
+
+    /**
      * Process a single update
      */
     protected function processUpdate(array $update): string
@@ -345,6 +393,376 @@ class SatelliteApiController extends Controller
             'since' => $bootTime,
             'duration' => now()->diffInSeconds($bootTime)
         ];
+    }
+
+    /**
+     * Collect comprehensive tenants data
+     */
+    protected function collectTenantsData(): array
+    {
+        $tenants = [];
+        $stats = [
+            'active' => 0,
+            'inactive' => 0,
+            'total_users' => 0,
+            'total_activity' => 0
+        ];
+
+        // Vérifier si le modèle Tenant existe (pour les apps avec tenancy)
+        if (class_exists('\App\Models\Tenant')) {
+            $tenantModel = '\App\Models\Tenant';
+            $allTenants = $tenantModel::all();
+            
+            foreach ($allTenants as $tenant) {
+                $tenantData = [
+                    'id' => $tenant->id,
+                    'name' => $tenant->name ?? $tenant->id,
+                    'domain' => $tenant->domain ?? null,
+                    'status' => $tenant->status ?? 'active',
+                    'created_at' => $tenant->created_at,
+                    'updated_at' => $tenant->updated_at,
+                ];
+
+                // Collecter les statistiques spécifiques par tenant
+                $tenantStats = $this->getTenantSpecificStats($tenant);
+                $tenantData['stats'] = $tenantStats;
+
+                $tenants[] = $tenantData;
+                
+                // Agrégation des stats globales
+                if ($tenantData['status'] === 'active') {
+                    $stats['active']++;
+                } else {
+                    $stats['inactive']++;
+                }
+                
+                $stats['total_users'] += $tenantStats['users_count'] ?? 0;
+                $stats['total_activity'] += $tenantStats['activity_count'] ?? 0;
+            }
+        } else {
+            // Pas de système multi-tenant, retourner les données globales
+            $tenants[] = [
+                'id' => 'default',
+                'name' => config('app.name'),
+                'domain' => config('app.url'),
+                'status' => 'active',
+                'stats' => $this->getGlobalStats(),
+                'created_at' => null,
+                'updated_at' => now()
+            ];
+            $stats['active'] = 1;
+        }
+
+        return [
+            'count' => count($tenants),
+            'data' => $tenants,
+            'stats' => $stats
+        ];
+    }
+
+    /**
+     * Collect detailed performance metrics
+     */
+    protected function collectPerformanceMetrics(): array
+    {
+        return [
+            'system' => $this->getSystemPerformance(),
+            'application' => $this->getApplicationPerformance(),
+            'database' => $this->getDatabasePerformance(),
+            'cache' => $this->getCachePerformance(),
+            'queue' => $this->getQueuePerformance(),
+            'network' => $this->getNetworkPerformance()
+        ];
+    }
+
+    /**
+     * Get tenant-specific statistics
+     */
+    protected function getTenantSpecificStats($tenant): array
+    {
+        $stats = [
+            'users_count' => 0,
+            'activity_count' => 0,
+            'storage_usage' => 0,
+            'last_activity' => null
+        ];
+
+        try {
+            // Compter les utilisateurs du tenant
+            if (method_exists($tenant, 'users')) {
+                $stats['users_count'] = $tenant->users()->count();
+                $stats['last_activity'] = $tenant->users()
+                    ->whereNotNull('last_login_at')
+                    ->max('last_login_at');
+            }
+
+            // Stats spécifiques selon le type d'application
+            $satelliteType = config('satellite.satellite.type');
+            switch ($satelliteType) {
+                case 'logistik':
+                    $stats['orders_count'] = $this->getTenantOrders($tenant);
+                    $stats['shipments_count'] = $this->getTenantShipments($tenant);
+                    break;
+                case 'vinci':
+                    $stats['brokers_count'] = $this->getTenantBrokers($tenant);
+                    $stats['jobs_count'] = $this->getTenantJobs($tenant);
+                    break;
+                case 'pixel':
+                    $stats['qr_codes_count'] = $this->getTenantQRCodes($tenant);
+                    $stats['scans_count'] = $this->getTenantScans($tenant);
+                    break;
+            }
+
+        } catch (\Exception $e) {
+            // Log l'erreur mais continuer
+            logger()->warning('Error collecting tenant stats', [
+                'tenant' => $tenant->id ?? 'unknown',
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Get global application statistics (non-tenant)
+     */
+    protected function getGlobalStats(): array
+    {
+        $stats = [
+            'users_count' => 0,
+            'activity_count' => 0,
+            'storage_usage' => $this->getStorageUsage()
+        ];
+
+        try {
+            // Compter les utilisateurs globaux
+            if (class_exists('\App\Models\User')) {
+                $stats['users_count'] = \App\Models\User::count();
+                $stats['last_activity'] = \App\Models\User::whereNotNull('last_login_at')
+                    ->max('last_login_at');
+            }
+
+            // Stats spécifiques selon le type
+            $satelliteType = config('satellite.satellite.type');
+            switch ($satelliteType) {
+                case 'logistik':
+                    $stats['orders_count'] = $this->getGlobalOrders();
+                    $stats['shipments_count'] = $this->getGlobalShipments();
+                    break;
+                case 'vinci':
+                    $stats['brokers_count'] = $this->getGlobalBrokers();
+                    $stats['jobs_count'] = $this->getGlobalJobs();
+                    break;
+                case 'pixel':
+                    $stats['qr_codes_count'] = $this->getGlobalQRCodes();
+                    $stats['scans_count'] = $this->getGlobalScans();
+                    break;
+            }
+
+        } catch (\Exception $e) {
+            logger()->warning('Error collecting global stats', [
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Get system performance metrics
+     */
+    protected function getSystemPerformance(): array
+    {
+        return [
+            'memory' => [
+                'used' => memory_get_usage(true),
+                'peak' => memory_get_peak_usage(true),
+                'limit' => $this->parseMemoryLimit(ini_get('memory_limit')),
+                'usage_percentage' => round((memory_get_usage(true) / $this->parseMemoryLimit(ini_get('memory_limit'))) * 100, 2)
+            ],
+            'cpu' => [
+                'load_average' => sys_getloadavg() ?: [0, 0, 0],
+                'cores' => $this->getCpuCores()
+            ],
+            'disk' => [
+                'free' => disk_free_space('/'),
+                'total' => disk_total_space('/'),
+                'used_percentage' => round((1 - disk_free_space('/') / disk_total_space('/')) * 100, 2)
+            ],
+            'uptime' => $this->getUptime()
+        ];
+    }
+
+    /**
+     * Get application performance metrics
+     */
+    protected function getApplicationPerformance(): array
+    {
+        return [
+            'response_time' => [
+                'average' => Cache::get('app.response_time.average', 0),
+                'min' => Cache::get('app.response_time.min', 0),
+                'max' => Cache::get('app.response_time.max', 0)
+            ],
+            'requests' => [
+                'total' => Cache::get('app.requests.total', 0),
+                'per_minute' => Cache::get('app.requests.per_minute', 0),
+                'errors' => Cache::get('app.requests.errors', 0)
+            ],
+            'sessions' => [
+                'active' => $this->getActiveSessions(),
+                'total' => Cache::get('app.sessions.total', 0)
+            ]
+        ];
+    }
+
+    /**
+     * Get database performance metrics
+     */
+    protected function getDatabasePerformance(): array
+    {
+        try {
+            $queryLog = \DB::getQueryLog();
+            $queryCount = count($queryLog);
+            $slowQueries = collect($queryLog)->where('time', '>', 1000)->count();
+
+            return [
+                'queries' => [
+                    'total' => $queryCount,
+                    'slow' => $slowQueries,
+                    'average_time' => $queryCount > 0 ? collect($queryLog)->avg('time') : 0
+                ],
+                'connections' => [
+                    'active' => \DB::getConnections()->count(),
+                    'max' => config('database.connections.mysql.pool.max_connections', 100)
+                ]
+            ];
+        } catch (\Exception $e) {
+            return [
+                'queries' => ['total' => 0, 'slow' => 0, 'average_time' => 0],
+                'connections' => ['active' => 0, 'max' => 0],
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Get cache performance metrics
+     */
+    protected function getCachePerformance(): array
+    {
+        try {
+            return [
+                'hit_rate' => Cache::get('cache.hit_rate', 0),
+                'miss_rate' => Cache::get('cache.miss_rate', 0),
+                'memory_usage' => Cache::get('cache.memory_usage', 0),
+                'keys_count' => Cache::get('cache.keys_count', 0)
+            ];
+        } catch (\Exception $e) {
+            return [
+                'hit_rate' => 0,
+                'miss_rate' => 0,
+                'memory_usage' => 0,
+                'keys_count' => 0,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Get queue performance metrics
+     */
+    protected function getQueuePerformance(): array
+    {
+        try {
+            return [
+                'pending' => Cache::get('queue.pending', 0),
+                'processing' => Cache::get('queue.processing', 0),
+                'failed' => Cache::get('queue.failed', 0),
+                'completed' => Cache::get('queue.completed', 0)
+            ];
+        } catch (\Exception $e) {
+            return [
+                'pending' => 0,
+                'processing' => 0,
+                'failed' => 0,
+                'completed' => 0,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Get network performance metrics
+     */
+    protected function getNetworkPerformance(): array
+    {
+        return [
+            'latency' => Cache::get('network.latency', 0),
+            'throughput' => Cache::get('network.throughput', 0),
+            'external_apis' => [
+                'unicyhub' => [
+                    'status' => Cache::get('api.unicyhub.status', 'unknown'),
+                    'response_time' => Cache::get('api.unicyhub.response_time', 0)
+                ]
+            ]
+        ];
+    }
+
+    // Helper methods pour les stats spécifiques par type d'application
+    protected function getTenantOrders($tenant): int { return 0; }
+    protected function getTenantShipments($tenant): int { return 0; }
+    protected function getTenantBrokers($tenant): int { return 0; }
+    protected function getTenantJobs($tenant): int { return 0; }
+    protected function getTenantQRCodes($tenant): int { return 0; }
+    protected function getTenantScans($tenant): int { return 0; }
+    
+    protected function getGlobalOrders(): int { return 0; }
+    protected function getGlobalShipments(): int { return 0; }
+    protected function getGlobalBrokers(): int { return 0; }
+    protected function getGlobalJobs(): int { return 0; }
+    protected function getGlobalQRCodes(): int { return 0; }
+    protected function getGlobalScans(): int { return 0; }
+
+    protected function getStorageUsage(): int
+    {
+        try {
+            return disk_total_space(storage_path()) - disk_free_space(storage_path());
+        } catch (\Exception $e) {
+            return 0;
+        }
+    }
+
+    protected function parseMemoryLimit(string $limit): int
+    {
+        $limit = trim($limit);
+        $last = strtolower($limit[strlen($limit)-1]);
+        $value = (int) $limit;
+        
+        switch($last) {
+            case 'g': $value *= 1024;
+            case 'm': $value *= 1024;
+            case 'k': $value *= 1024;
+        }
+        
+        return $value;
+    }
+
+    protected function getCpuCores(): int
+    {
+        return (int) shell_exec('nproc 2>/dev/null') ?: 1;
+    }
+
+    protected function getActiveSessions(): int
+    {
+        try {
+            // Approximation basée sur les sessions Laravel
+            $sessionFiles = glob(storage_path('framework/sessions/*'));
+            return count($sessionFiles ?: []);
+        } catch (\Exception $e) {
+            return 0;
+        }
     }
 
     /**
