@@ -96,19 +96,49 @@ class UnicySatelliteServiceProvider extends ServiceProvider
             // Synchronisation périodique
             if (config('satellite.sync.enabled', true)) {
                 $interval = config('satellite.sync.interval', 300);
-                $schedule->command('satellite:sync')
-                    ->everyNMinutes(ceil($interval / 60))
-                    ->withoutOverlapping()
-                    ->runInBackground();
+                $intervalMinutes = ceil($interval / 60);
+                
+                $syncEvent = $schedule->command('satellite:sync');
+                
+                if ($intervalMinutes <= 1) {
+                    $syncEvent->everyMinute();
+                } elseif ($intervalMinutes <= 5) {
+                    $syncEvent->everyFiveMinutes();
+                } elseif ($intervalMinutes <= 10) {
+                    $syncEvent->everyTenMinutes();
+                } elseif ($intervalMinutes <= 15) {
+                    $syncEvent->everyFifteenMinutes();
+                } elseif ($intervalMinutes <= 30) {
+                    $syncEvent->everyThirtyMinutes();
+                } else {
+                    $syncEvent->hourly();
+                }
+                
+                $syncEvent->withoutOverlapping()->runInBackground();
             }
 
             // Envoi de métriques
             if (config('satellite.metrics.enabled', true)) {
                 $interval = config('satellite.metrics.interval', 60);
-                $schedule->command('satellite:metrics')
-                    ->everyNMinutes(ceil($interval / 60))
-                    ->withoutOverlapping()
-                    ->runInBackground();
+                $intervalMinutes = ceil($interval / 60);
+                
+                $metricsEvent = $schedule->command('satellite:metrics');
+                
+                if ($intervalMinutes <= 1) {
+                    $metricsEvent->everyMinute();
+                } elseif ($intervalMinutes <= 5) {
+                    $metricsEvent->everyFiveMinutes();
+                } elseif ($intervalMinutes <= 10) {
+                    $metricsEvent->everyTenMinutes();
+                } elseif ($intervalMinutes <= 15) {
+                    $metricsEvent->everyFifteenMinutes();
+                } elseif ($intervalMinutes <= 30) {
+                    $metricsEvent->everyThirtyMinutes();
+                } else {
+                    $metricsEvent->hourly();
+                }
+                
+                $metricsEvent->withoutOverlapping()->runInBackground();
             }
         });
     }
