@@ -1,0 +1,68 @@
+{
+    "name": "unicy/unicysatellite",
+    "description": "Satellite communication package for UnicyHub distributed ecosystem",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "laravel",
+        "satellite",
+        "distributed",
+        "ecosystem",
+        "api",
+        "synchronization",
+        "unicyhub"
+    ],
+    "authors": [
+        {
+            "name": "UnicyHub Team",
+            "email": "dev@unicyhub.com"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "illuminate/support": "^10.0|^11.0",
+        "illuminate/database": "^10.0|^11.0",
+        "illuminate/http": "^10.0|^11.0",
+        "illuminate/routing": "^10.0|^11.0",
+        "illuminate/validation": "^10.0|^11.0",
+        "illuminate/console": "^10.0|^11.0",
+        "saloonphp/saloon": "^3.0",
+        "spatie/laravel-health": "^1.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0",
+        "orchestra/testbench": "^8.0|^9.0",
+        "mockery/mockery": "^1.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "UnicySatellite\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "UnicySatellite\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "UnicySatellite\\Providers\\UnicySatelliteServiceProvider"
+            ],
+            "aliases": {
+                "SatelliteHub": "UnicySatellite\\Facades\\SatelliteHub"
+            }
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "preferred-install": "dist",
+        "optimize-autoloader": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage"
+    }
+} 
