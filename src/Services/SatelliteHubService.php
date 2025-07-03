@@ -5,8 +5,6 @@ namespace UnicySatellite\Services;
 use Saloon\Http\Connector;
 use Saloon\Http\Request;
 use Saloon\Http\Response;
-use Saloon\Traits\Plugins\AcceptsJson;
-use Saloon\Traits\Plugins\AlwaysThrowsOnErrors;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use UnicySatellite\Exceptions\SatelliteException;

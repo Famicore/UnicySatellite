@@ -4,12 +4,10 @@ namespace UnicySatellite\Http\Integrations;
 
 use Saloon\Http\Connector;
 use Saloon\Traits\Plugins\AcceptsJson;
-use Saloon\Traits\Plugins\AlwaysThrowsOnErrors;
 
 class UnicyHubConnector extends Connector
 {
     use AcceptsJson;
-    use AlwaysThrowsOnErrors;
 
     protected string $hubUrl;
     protected string $apiKey;
