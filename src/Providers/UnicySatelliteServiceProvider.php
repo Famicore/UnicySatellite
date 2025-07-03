@@ -27,10 +27,17 @@ class UnicySatelliteServiceProvider extends ServiceProvider
 
         // Register services
         $this->app->singleton(SatelliteHubService::class, function ($app) {
-            return new SatelliteHubService(
-                config('satellite.hub.url'),
-                config('satellite.hub.api_key')
-            );
+            $hubUrl = config('satellite.hub.url', '');
+            $apiKey = config('satellite.hub.api_key', '');
+            
+            // Don't instantiate if critical config is missing
+            if (empty($hubUrl) || empty($apiKey)) {
+                throw new \RuntimeException(
+                    'UnicySatellite configuration missing. Please run: php artisan vendor:publish --tag="satellite-config" and configure your .env file'
+                );
+            }
+            
+            return new SatelliteHubService($hubUrl, $apiKey);
         });
 
         $this->app->singleton(MetricsCollectorService::class);
@@ -79,8 +86,11 @@ class UnicySatelliteServiceProvider extends ServiceProvider
         // Programmer les tâches automatiques
         $this->scheduleAutomaticTasks();
 
-        // Auto-registration si activé
-        if (config('satellite.sync.auto_register', true)) {
+        // Auto-registration si activé (seulement si la configuration est complète)
+        if (config('satellite.sync.auto_register', true) 
+            && config('satellite.hub.url') 
+            && config('satellite.hub.api_key')
+        ) {
             $this->autoRegisterSatellite();
         }
     }
@@ -150,6 +160,12 @@ class UnicySatelliteServiceProvider extends ServiceProvider
     {
         $this->app->booted(function () {
             try {
+                // Double vérification de la configuration avant d'essayer
+                if (empty(config('satellite.hub.url')) || empty(config('satellite.hub.api_key'))) {
+                    logger()->info('Satellite auto-registration skipped - configuration incomplete');
+                    return;
+                }
+                
                 /** @var SatelliteHubService $hubService */
                 $hubService = $this->app->make(SatelliteHubService::class);
                 
@@ -160,7 +176,7 @@ class UnicySatelliteServiceProvider extends ServiceProvider
                 // Log l'erreur mais ne pas interrompre l'application
                 logger()->warning('Auto-registration satellite failed', [
                     'error' => $e->getMessage(),
-                    'satellite' => config('satellite.satellite.name')
+                    'satellite' => config('satellite.satellite.name', 'unknown')
                 ]);
             }
         });
