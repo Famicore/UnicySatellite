@@ -634,7 +634,7 @@ class SatelliteApiController extends Controller
                     'average_time' => $queryCount > 0 ? collect($queryLog)->avg('time') : 0
                 ],
                 'connections' => [
-                    'active' => \DB::getConnections()->count(),
+                    'active' => count(\DB::getConnections()),
                     'max' => config('database.connections.mysql.pool.max_connections', 100)
                 ]
             ];
