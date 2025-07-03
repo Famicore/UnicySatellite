@@ -72,11 +72,25 @@ et ce projet adhère au [Versioning Sémantique](https://semver.org/spec/v2.0.0.
 - Guide de debugging
 - Structure du package documentée
 
+### Corrections appliquées (intégration UnicyLogistik)
+- 🐛 **Laravel 11 compatibility** - Remplacement `everyNMinutes()` par méthodes compatibles
+- 🐛 **Saloon v3 compatibility** - Suppression trait `AlwaysThrowsOnErrors` inexistant
+- 🔧 **Configuration handling** - Gestion gracieuse variables d'environnement manquantes
+- 🔧 **Service Provider** - Validation configuration avant instantiation services
+
+### Tests d'intégration validés ✅
+- **Installation UnicyLogistik** - Package discovery et autoload réussis
+- **Configuration automatique** - 25 variables .env ajoutées proprement
+- **Commandes Artisan** - `register --test`, `sync --dry-run`, `metrics --show` fonctionnelles
+- **Endpoints API** - 7 routes créées avec sécurité active
+- **Métriques temps réel** - Collecte utilisateurs/tenants/sessions opérationnelle
+- **Health checks** - Authentification API validée
+
 ### Compatibilité
-- **Laravel** : 10.x, 11.x
+- **Laravel** : 10.x, 11.x (testé sur 11.x)
 - **PHP** : 8.1+
-- **Saloon** : 3.x
-- **Spatie Laravel Health** : 1.x
+- **Saloon** : 3.x (testé avec 3.14.0)
+- **Spatie Laravel Health** : 1.x (testé avec 1.34.3)
 
 ---
 
