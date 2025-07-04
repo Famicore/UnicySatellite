@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Artisan;
 use UnicySatellite\Services\MetricsCollectorService;
 use UnicySatellite\Services\SatelliteHubService;
+use UnicySatellite\Services\SensitiveDataDetector;
 
 class SatelliteApiController extends Controller
 {
@@ -305,6 +306,52 @@ class SatelliteApiController extends Controller
                 'success' => false,
                 'error' => $e->getMessage(),
                 'timestamp' => now()->toISOString()
+            ], 500);
+        }
+    }
+
+    /**
+     * Sensitive keys endpoint - Détection automatique des données sensibles
+     */
+    public function sensitiveKeys(SensitiveDataDetector $detector, Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'show_raw_values' => 'sometimes|boolean',
+                'include_stats' => 'sometimes|boolean'
+            ]);
+
+            $showRawValues = $validated['show_raw_values'] ?? false;
+            $includeStats = $validated['include_stats'] ?? false;
+
+            // Scanner le fichier .env pour détecter les données sensibles
+            $sensitiveData = $detector->scanEnvironmentFile($showRawValues);
+            
+            $response = [
+                'success' => true,
+                'sensitive_keys' => $sensitiveData,
+                'count' => count($sensitiveData),
+                'timestamp' => now()->toISOString(),
+                'satellite' => config('satellite.satellite.name')
+            ];
+
+            // Ajouter les statistiques de sécurité si demandées
+            if ($includeStats) {
+                $response['security_stats'] = $detector->getSecurityStats();
+                $response['patterns_info'] = [
+                    'sensitive_patterns_count' => count($detector->getSensitivePatterns()),
+                    'ignored_variables_count' => count($detector->getIgnoredVariables()),
+                ];
+            }
+
+            return response()->json($response);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to scan sensitive data: ' . $e->getMessage(),
+                'timestamp' => now()->toISOString(),
+                'satellite' => config('satellite.satellite.name')
             ], 500);
         }
     }

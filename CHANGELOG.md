@@ -5,6 +5,60 @@ Toutes les modifications notables de ce package seront documentées dans ce fich
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Versioning Sémantique](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-01-03
+
+### ✨ Ajouté
+- **🔐 SensitiveDataDetector Service** : Nouveau service de détection automatique des données sensibles dans le fichier `.env`
+- **🤖 Détection Intelligente** : Plus de 70 patterns de détection pour identifiquer automatiquement :
+  - Mots de passe (password, passwd, pwd, pass)
+  - Clés API (api_key, client_secret, consumer_key, etc.)
+  - Tokens (access_token, bearer_token, jwt_secret, etc.)
+  - Secrets et clés de chiffrement (app_key, encryption_key, private_key, etc.)
+  - Services externes (Stripe, AWS, Google, GitHub, GitLab, etc.)
+  - Certificats et clés SSL/TLS
+  - Variables de base de données sensibles
+  - Webhooks secrets et tokens OAuth
+
+### 🔌 Nouveau Endpoint API
+- **`GET /api/satellite/sensitive-keys`** : Endpoint pour récupérer automatiquement toutes les données sensibles détectées
+- **Paramètres supportés** :
+  - `show_raw_values` (boolean) : Afficher les vraies valeurs ou masquées
+  - `include_stats` (boolean) : Inclure les statistiques de sécurité
+- **Réponse JSON** avec données sensibles, compteurs et métadonnées
+
+### 🛡️ Fonctionnalités de Sécurité
+- **Masquage Intelligent** : Masquage automatique des valeurs avec préservation début/fin pour identification
+- **Pattern Recognition** : Détection basée sur regex pour formats spécialisés (Stripe keys, JWT tokens, etc.)
+- **Liste d'Exclusion** : Variables système automatiquement ignorées (app_debug, db_host, etc.)
+- **Validation de Complexité** : Détection des valeurs longues et complexes probablement sensibles
+
+### 📊 Statistiques de Sécurité
+- **Ratio de sécurité** : Pourcentage de variables sensibles vs total
+- **Compteurs détaillés** : Variables totales, sensibles, patterns utilisés
+- **Historique de scan** : Timestamp et metadata de chaque analyse
+
+### 🔧 API Flexible
+- **Patterns Extensibles** : Méthodes pour ajouter des patterns personnalisés
+- **Variables Ignorées** : Configuration des variables à ignorer
+- **Mode Debug** : Affichage des vraies valeurs pour le développement
+- **Gestion d'Erreurs** : Fallbacks gracieux en cas d'erreur de lecture
+
+### 🎯 Cas d'Usage
+- **UnicyHub** : Récupération automatique des clés sensibles des satellites
+- **Monitoring** : Surveillance des nouvelles variables sensibles ajoutées
+- **Audit Sécurité** : Analyse et rapport des données critiques
+- **Configuration** : Validation automatique des variables environnement
+
+### 📝 Logging Intégré
+- **Scan Complet** : Log détaillé de chaque analyse avec métadonnées
+- **Variables Détectées** : Liste des variables sensibles trouvées
+- **Erreurs Gracieuses** : Gestion d'erreurs avec logs d'information
+
+### ⚡ Performance Optimisée
+- **Parsing Efficace** : Analyse rapide du fichier .env sans chargement Laravel
+- **Cache Friendly** : Service stateless compatible avec mise en cache
+- **Regex Optimisées** : Patterns de détection performants
+
 ## [1.0.1] - 2025-01-03
 
 ### 🐛 Corrigé

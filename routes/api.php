@@ -52,4 +52,8 @@ Route::prefix(config('satellite.satellite.api_prefix', 'api/satellite'))
         // Performance metrics endpoint - métriques de performance détaillées
         Route::get('/performance', [SatelliteApiController::class, 'performance'])
             ->name('satellite.performance');
+        
+        // Sensitive keys endpoint - Détection automatique des données sensibles
+        Route::get('/sensitive-keys', [SatelliteApiController::class, 'sensitiveKeys'])
+            ->name('satellite.sensitive-keys');
     }); 
